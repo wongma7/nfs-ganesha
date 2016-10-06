@@ -370,6 +370,11 @@ nfsstat4 nfs_req_creds(struct svc_req *req)
 			    op_ctx->creds->caller_uid,
 			    op_ctx->creds->caller_gid);
 		op_ctx->cred_flags |= UID_SQUASHED | GID_SQUASHED;
+		/* Use the original_creds group list */
+		op_ctx->creds->caller_glen   =
+			op_ctx->original_creds.caller_glen;
+		op_ctx->creds->caller_garray =
+			op_ctx->original_creds.caller_garray;
 		return NFS4_OK;
 	}
 
