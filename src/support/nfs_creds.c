@@ -3,7 +3,7 @@
  *
  * Copyright CEA/DAM/DIF  (2008)
  * contributeur : Philippe DENIEL   philippe.deniel@cea.fr
- *                Thomas LEIBOVICI  thomas.leibovici@cea.fr
+ *		  Thomas LEIBOVICI  thomas.leibovici@cea.fr
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -13,7 +13,7 @@
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
@@ -80,7 +80,10 @@ void squash_setattr(struct attrlist *attr)
 		if (op_ctx->export_perms->options &
 		    EXPORT_OPTION_ALL_ANONYMOUS)
 			attr->owner = op_ctx->export_perms->anonymous_uid;
-		else if (!(op_ctx->export_perms->options & EXPORT_OPTION_ROOT)
+		else if (((op_ctx->export_perms->options &
+			   EXPORT_OPTION_ROOT_SQUASH) ||
+			  (op_ctx->export_perms->options &
+			   EXPORT_OPTION_ROOT_ID_SQUASH))
 			 && (attr->owner == 0)
 			 && ((op_ctx->cred_flags & UID_SQUASHED) != 0))
 			attr->owner = op_ctx->export_perms->anonymous_uid;
@@ -97,7 +100,10 @@ void squash_setattr(struct attrlist *attr)
 		if (op_ctx->export_perms->options &
 		    EXPORT_OPTION_ALL_ANONYMOUS)
 			attr->group = op_ctx->export_perms->anonymous_gid;
-		else if (!(op_ctx->export_perms->options & EXPORT_OPTION_ROOT)
+		else if (((op_ctx->export_perms->options &
+			   EXPORT_OPTION_ROOT_SQUASH) ||
+			  (op_ctx->export_perms->options &
+			   EXPORT_OPTION_ROOT_ID_SQUASH))
 			 && (attr->group == 0)
 			 && ((op_ctx->cred_flags & (GID_SQUASHED |
 						     GARRAY_SQUASHED)) != 0))
@@ -238,7 +244,7 @@ int nfs_rpc_req2client_cred(struct svc_req *req, nfs_client_cred_t *pcred)
  *
  * fills out creds in op_ctx
  *
- * @param[in]  req              Incoming request.
+ * @param[in]  req		Incoming request.
  *
  * @return NFS4_OK if successful, NFS4ERR_ACCESS otherwise.
  *
@@ -357,8 +363,9 @@ nfsstat4 nfs_req_creds(struct svc_req *req)
 	if ((op_ctx->cred_flags & CREDS_ANON) != 0 ||
 	    ((op_ctx->export_perms->options &
 	      EXPORT_OPTION_ALL_ANONYMOUS) != 0) ||
-	    ((op_ctx->export_perms->options & EXPORT_OPTION_ROOT) == 0 &&
+	    ((op_ctx->export_perms->options & EXPORT_OPTION_ROOT_SQUASH) != 0 &&
 	      op_ctx->original_creds.caller_uid == 0)) {
+		/* Squash uid, gid, and discard groups */
 		op_ctx->creds->caller_uid =
 					op_ctx->export_perms->anonymous_uid;
 		op_ctx->creds->caller_gid =
@@ -371,15 +378,24 @@ nfsstat4 nfs_req_creds(struct svc_req *req)
 			    op_ctx->creds->caller_gid);
 		op_ctx->cred_flags |= UID_SQUASHED | GID_SQUASHED;
 		return NFS4_OK;
+	} else if ((op_ctx->export_perms->options &
+		    EXPORT_OPTION_ROOT_ID_SQUASH) != 0 &&
+		   op_ctx->original_creds.caller_uid == 0) {
+		/* Only squash root id, leave gid and groups alone for now */
+		op_ctx->creds->caller_uid =
+					op_ctx->export_perms->anonymous_uid;
+		op_ctx->cred_flags |= UID_SQUASHED;
+	} else {
+		/* Use original_creds uid */
+		op_ctx->creds->caller_uid = op_ctx->original_creds.caller_uid;
 	}
-
-	/* Now we will use the original_creds uid from original credential */
-	op_ctx->creds->caller_uid = op_ctx->original_creds.caller_uid;
 
 	/****************************************************************/
 	/* Now sqush group or use original_creds gid			*/
 	/****************************************************************/
-	if ((op_ctx->export_perms->options & EXPORT_OPTION_ROOT) == 0 &&
+	if (((op_ctx->export_perms->options & EXPORT_OPTION_ROOT_SQUASH) != 0 ||
+	     (op_ctx->export_perms->options &
+	      EXPORT_OPTION_ROOT_ID_SQUASH) != 0) &&
 	    op_ctx->original_creds.caller_gid == 0) {
 		/* Squash gid */
 		op_ctx->creds->caller_gid =
@@ -419,7 +435,9 @@ nfsstat4 nfs_req_creds(struct svc_req *req)
 	/****************************************************************/
 
 	/* If no root squashing in caller_garray, return now */
-	if ((op_ctx->export_perms->options & EXPORT_OPTION_ROOT) != 0 ||
+	if ((op_ctx->export_perms->options & EXPORT_OPTION_ROOT_SQUASH) != 0 ||
+	    (op_ctx->export_perms->options &
+	     EXPORT_OPTION_ROOT_ID_SQUASH) != 0 ||
 	    op_ctx->creds->caller_glen == 0)
 		goto out;
 
@@ -458,9 +476,12 @@ nfsstat4 nfs_req_creds(struct svc_req *req)
 out:
 
 	LogMidDebugAlt(COMPONENT_DISPATCH, COMPONENT_EXPORT,
-		    "%s creds mapped to uid=%u, gid=%u%s, glen=%d%s",
+		    "%s creds mapped to uid=%u%s, gid=%u%s, glen=%d%s",
 		    auth_label,
 		    op_ctx->creds->caller_uid,
+		    (op_ctx->cred_flags & UID_SQUASHED) != 0
+			? " (squashed)"
+			: "",
 		    op_ctx->creds->caller_gid,
 		    (op_ctx->cred_flags & GID_SQUASHED) != 0
 			? " (squashed)"
@@ -518,7 +539,7 @@ void clean_credentials(void)
 /**
  * @brief Validate export permissions
  *
- * @param[in]  req              Incoming request.
+ * @param[in]  req		Incoming request.
  *
  * @return NFS4_OK if successful, NFS4ERR_ACCESS or NFS4ERR_WRONGSEC otherwise.
  *
@@ -616,7 +637,7 @@ nfsstat4 nfs4_export_check_access(struct svc_req *req)
  *
  * @param[in]  obj Object handle to check access for
  * @param[in]  requested_access The ACCESS3 or ACCESS4 bits requested
- * @param[out] granted_access   The bits granted
+ * @param[out] granted_access	The bits granted
  * @param[out] supported_access The bits supported for this inode
  *
  * @return FSAL error
@@ -657,7 +678,7 @@ fsal_errors_t nfs_access_op(struct fsal_obj_handle *obj,
 
 	/* Set mode for read.
 	 * NOTE: FSAL_ACE_PERM_LIST_DIR and FSAL_ACE_PERM_READ_DATA have
-	 *       the same bit value so we don't bother looking at file type.
+	 *	 the same bit value so we don't bother looking at file type.
 	 */
 	if (requested_access & ACCESS3_READ)
 		access_mask |= FSAL_R_OK | FSAL_ACE_PERM_READ_DATA;

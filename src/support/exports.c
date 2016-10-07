@@ -1,7 +1,7 @@
 /*
  * Copyright CEA/DAM/DIF  (2008)
  * contributeur : Philippe DENIEL   philippe.deniel@cea.fr
- *                Thomas LEIBOVICI  thomas.leibovici@cea.fr
+ *		  Thomas LEIBOVICI  thomas.leibovici@cea.fr
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
@@ -102,23 +102,31 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		return b_left;
 
 	if ((p_perms->set & EXPORT_OPTION_SQUASH_TYPES) != 0) {
-		if ((p_perms->options & EXPORT_OPTION_ROOT) != 0)
-			b_left = display_cat(dspbuf, "no_root_squash");
+		if ((p_perms->options & EXPORT_OPTION_ROOT_SQUASH) != 0)
+			b_left = display_cat(dspbuf, "root_squash	 ");
+
+		if (b_left <= 0)
+			return b_left;
+
+		if ((p_perms->options & EXPORT_OPTION_ROOT_ID_SQUASH) != 0)
+			b_left = display_cat(dspbuf, "root_id_only_squash");
 
 		if (b_left <= 0)
 			return b_left;
 
 		if ((p_perms->options & EXPORT_OPTION_ALL_ANONYMOUS)  != 0)
-			b_left = display_cat(dspbuf, "all_squash    ");
+			b_left = display_cat(dspbuf, "all_squash	 ");
 
 		if (b_left <= 0)
 			return b_left;
 
 		if ((p_perms->options &
-		     (EXPORT_OPTION_ROOT | EXPORT_OPTION_ALL_ANONYMOUS)) == 0)
-			b_left = display_cat(dspbuf, "root_squash   ");
+		     (EXPORT_OPTION_ROOT_SQUASH |
+		      EXPORT_OPTION_ROOT_ID_SQUASH |
+		      EXPORT_OPTION_ALL_ANONYMOUS)) == 0)
+			b_left = display_cat(dspbuf, "no_root_squash	 ");
 	} else
-		b_left = display_cat(dspbuf, "              ");
+		b_left = display_cat(dspbuf, "		    ");
 
 	if (b_left <= 0)
 		return b_left;
@@ -153,7 +161,7 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		else
 			b_left = display_cat(dspbuf, "-");
 	} else
-		b_left = display_cat(dspbuf, ",     ");
+		b_left = display_cat(dspbuf, ",	    ");
 
 	if (b_left <= 0)
 		return b_left;
@@ -180,7 +188,7 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		else
 			b_left = display_cat(dspbuf, "-");
 	} else
-		b_left = display_cat(dspbuf, ",    ");
+		b_left = display_cat(dspbuf, ",	   ");
 
 	if (b_left <= 0)
 		return b_left;
@@ -207,13 +215,13 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		else
 			b_left = display_cat(dspbuf, ", ----");
 	} else
-		b_left = display_cat(dspbuf, ",               ");
+		b_left = display_cat(dspbuf, ",		      ");
 
 	if (b_left <= 0)
 		return b_left;
 
 	if ((p_perms->set & EXPORT_OPTION_MANAGE_GIDS) == 0)
-		b_left = display_cat(dspbuf, ",               ");
+		b_left = display_cat(dspbuf, ",		      ");
 	else if ((p_perms->options & EXPORT_OPTION_MANAGE_GIDS) != 0)
 		b_left = display_cat(dspbuf, ", Manage_Gids   ");
 	else
@@ -236,7 +244,7 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		else
 			b_left = display_cat(dspbuf, "- Deleg");
 	} else
-		b_left = display_cat(dspbuf, ",         ");
+		b_left = display_cat(dspbuf, ",		");
 
 	if (b_left <= 0)
 		return b_left;
@@ -245,7 +253,7 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		b_left = display_printf(dspbuf, ", anon_uid=%6d",
 					(int)p_perms->anonymous_uid);
 	else
-		b_left = display_cat(dspbuf, ",                ");
+		b_left = display_cat(dspbuf, ",		       ");
 
 	if (b_left <= 0)
 		return b_left;
@@ -254,7 +262,7 @@ static int StrExportOptions(struct display_buffer *dspbuf,
 		b_left = display_printf(dspbuf, ", anon_gid=%6d",
 					(int)p_perms->anonymous_gid);
 	else
-		b_left = display_cat(dspbuf, ",                ");
+		b_left = display_cat(dspbuf, ",		       ");
 
 	if (b_left <= 0)
 		return b_left;
@@ -411,8 +419,8 @@ static void display_clients(struct gsh_export *export)
  * @param client_list[IN] the client list this gets linked to (in tail order)
  * @param client_tok [IN] the name string.  We modify it.
  * @param type_hint  [IN] type hint from parser for client_tok
- * @param perms      [IN] pointer to the permissions to copy into each
- * @param cnode      [IN] opaque pointer needed for config_proc_error()
+ * @param perms	     [IN] pointer to the permissions to copy into each
+ * @param cnode	     [IN] opaque pointer needed for config_proc_error()
  * @param err_type   [OUT] error handling ref
  *
  * @returns 0 on success, error count on failure
@@ -543,7 +551,7 @@ static int add_client(struct glist_head *client_list,
 
 					if (ap_last != NULL &&
 					    ap_last->ai_family == ap->ai_family
-					    &&  !memcmp(&infoaddr,
+					    &&	!memcmp(&infoaddr,
 						       &in6_addr_last,
 						       sizeof(struct in6_addr)))
 						continue;
@@ -611,7 +619,7 @@ out:
  * Allocate one exportlist_client structure for parameter
  * processing. The client_commit will allocate additional
  * exportlist_client__ storage for each of its enumerated
- * clients and free the initial block.  We only free that
+ * clients and free the initial block.	We only free that
  * resource here on errors.
  */
 
@@ -823,9 +831,9 @@ static int fsal_update_cfg_commit(void *node, void *link_mem, void *self_struct,
 	}
 
 	/** @todo - we really should verify update of FSAL options in
-	 *          export, at the moment any changes there will be
-	 *          ignored. In fact, we can't even process the
-	 *          FSAL name...
+	 *	    export, at the moment any changes there will be
+	 *	    ignored. In fact, we can't even process the
+	 *	    FSAL name...
 	 */
 
 	/* We have to clean the export paths so we can properly compare them
@@ -1033,7 +1041,7 @@ static int export_commit_common(void *node, void *link_mem, void *self_struct,
 		}
 	}
 	if (errcnt)
-		return errcnt;  /* have basic errors. don't even try more... */
+		return errcnt;	/* have basic errors. don't even try more... */
 
 	/* Note: need to check export->fsal_export AFTER we have checked for
 	 * duplicate export_id. That is because an update export WILL NOT
@@ -1230,7 +1238,7 @@ static int export_commit_common(void *node, void *link_mem, void *self_struct,
 			LogCrit(COMPONENT_CONFIG,
 				 "Duplicate export id = %d",
 				 export->export_id);
-		return errcnt;  /* have errors. don't init or load a fsal */
+		return errcnt;	/* have errors. don't init or load a fsal */
 	}
 
 	if (!insert_gsh_export(export)) {
@@ -1506,6 +1514,9 @@ static struct config_item_list squash_types[] = {
 	CONFIG_LIST_TOK("No_Root_Squash", EXPORT_OPTION_ROOT),
 	CONFIG_LIST_TOK("None", EXPORT_OPTION_ROOT),
 	CONFIG_LIST_TOK("NoIdSquash", EXPORT_OPTION_ROOT),
+	CONFIG_LIST_TOK("RootId", EXPORT_OPTION_ROOT_ID_SQUASH),
+	CONFIG_LIST_TOK("Root_Id_Squash", EXPORT_OPTION_ROOT_ID_SQUASH),
+	CONFIG_LIST_TOK("RootIdSquash", EXPORT_OPTION_ROOT_ID_SQUASH),
 	CONFIG_LIST_EOL
 };
 
@@ -1524,7 +1535,7 @@ static struct config_item_list delegations[] = {
 	CONFIG_LIST_EOL
 };
 
-struct config_item_list deleg_types[] =  {
+struct config_item_list deleg_types[] =	 {
 	CONFIG_LIST_TOK("NONE", FSAL_OPTION_NO_DELEGATIONS),
 	CONFIG_LIST_TOK("Read", FSAL_OPTION_FILE_READ_DELEG),
 	CONFIG_LIST_TOK("Write", FSAL_OPTION_FILE_WRITE_DELEG),
@@ -1919,7 +1930,7 @@ static int build_default_root(struct config_error_type *err_type)
 		export->fsal_export->exp_ops.release(export->fsal_export);
 		fsal_put(fsal_hdl);
 		LogCrit(COMPONENT_CONFIG,
-			"Failed to insert pseudo root   In use??");
+			"Failed to insert pseudo root	In use??");
 		goto err_out;
 	}
 
@@ -1945,7 +1956,7 @@ err_out:
  * @param[in]  in_config    The file that contains the export list
  *
  * @return A negative value on error,
- *         the number of export entries else.
+ *	   the number of export entries else.
  */
 
 int ReadExports(config_file_t in_config,
@@ -1988,7 +1999,7 @@ int ReadExports(config_file_t in_config,
  * @param[in]  in_config    The file that contains the export list
  *
  * @return A negative value on error,
- *         the number of export entries else.
+ *	   the number of export entries else.
  */
 
 int reread_exports(config_file_t in_config,
@@ -2104,7 +2115,7 @@ void exports_pkginit(void)
  * caller.
  *
  * @param export [IN] the aforementioned export
- * @param entry  [IN/OUT] call by ref pointer to store obj
+ * @param entry	 [IN/OUT] call by ref pointer to store obj
  *
  * @return FSAL status
  */
@@ -2289,8 +2300,8 @@ void unexport(struct gsh_export *export)
 /**
  * @brief Match a specific option in the client export list
  *
- * @param[in]  hostaddr      Host to search for
- * @param[in]  clients       Client list to search
+ * @param[in]  hostaddr	     Host to search for
+ * @param[in]  clients	     Client list to search
  * @param[out] client_found Matching entry
  * @param[in]  export_option Option to search for
  *
@@ -2423,8 +2434,8 @@ static exportlist_client_entry_t *client_match(sockaddr_t *hostaddr,
 /**
  * @brief Match a specific option in the client export list
  *
- * @param[in]  paddrv6       Host to search for
- * @param[in]  clients       Client list to search
+ * @param[in]  paddrv6	     Host to search for
+ * @param[in]  clients	     Client list to search
  * @param[out] client_found Matching entry
  * @param[in]  export_option Option to search for
  *
@@ -2492,7 +2503,7 @@ static exportlist_client_entry_t *client_match_any(sockaddr_t *hostaddr,
 
 /**
  * @brief Checks if request security flavor is suffcient for the requested
- *        export
+ *	  export
  *
  * @param[in] req     Related RPC request.
  *
@@ -2605,7 +2616,7 @@ sockaddr_t *convert_ipv6_to_ipv4(sockaddr_t *ipv6, sockaddr_t *ipv4)
 	 * |---------------------------------------------------------------|
 	 * |   80 bits = 10 bytes  | 16 bits = 2 bytes | 32 bits = 4 bytes |
 	 * |---------------------------------------------------------------|
-	 * |            0          |        FFFF       |    IPv4 address   |
+	 * |		0	   |	    FFFF       |    IPv4 address   |
 	 * |---------------------------------------------------------------|
 	 */
 	if ((ipv6->ss_family == AF_INET6)
@@ -2830,7 +2841,7 @@ void export_check_access(void)
 		if (client != NULL) {
 			(void) StrExportOptions(&dspbuf, &client->client_perms);
 			LogMidDebug(COMPONENT_EXPORT,
-				    "CLIENT          (%s)",
+				    "CLIENT	     (%s)",
 				    perms);
 			display_reset_buffer(&dspbuf);
 		}
@@ -2839,7 +2850,7 @@ void export_check_access(void)
 			(void) StrExportOptions(&dspbuf,
 						&op_ctx->ctx_export->export_perms);
 			LogMidDebug(COMPONENT_EXPORT,
-				    "EXPORT          (%s)",
+				    "EXPORT	     (%s)",
 				    perms);
 			display_reset_buffer(&dspbuf);
 		}
