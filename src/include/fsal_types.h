@@ -680,6 +680,7 @@ typedef struct fsal_staticfsinfo_t {
 	bool fsal_trace;	/*< fsal trace supports */
 	bool fsal_grace;	/*< fsal will handle grace */
 	bool link_supports_permission_checks;
+	bool fsid_device; /* use device major/minor for fsid */
 } fsal_staticfsinfo_t;
 
 /**

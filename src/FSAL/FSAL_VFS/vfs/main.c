@@ -102,6 +102,8 @@ static struct config_item vfs_params[] = {
 		       fsal_staticfsinfo_t, auth_exportpath_xdev),
 	CONF_ITEM_MODE("xattr_access_rights", 0400,
 		       fsal_staticfsinfo_t, xattr_access_rights),
+	CONF_ITEM_BOOL("fsid_device", false,
+		       fsal_staticfsinfo_t, fsid_device),
 	CONFIG_EOL
 };
 
